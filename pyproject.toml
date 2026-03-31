@@ -1,0 +1,19 @@
+[project]
+name = "caravan-layout-optimizer"
+version = "1.0.0"
+description = "OpenEnv Caravan Layout Optimization Environment"
+authors = [{ name = "Jayesh Jangid" }]
+requires-python = ">=3.10"
+
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "pydantic",
+    "requests",
+    "openai",
+    "httpx",
+    "pyyaml"
+]
+
+[tool.setuptools]
+packages = ["env"]

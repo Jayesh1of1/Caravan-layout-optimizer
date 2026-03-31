@@ -19,3 +19,9 @@ dependencies = [
     "pyyaml",
     "openenv-core>=0.2.0"
 ]
+
+[project.scripts]
+server = "server.app:app"
+
+[tool.setuptools]
+packages = ["env", "server"]

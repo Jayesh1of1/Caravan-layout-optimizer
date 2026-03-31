@@ -1,0 +1,189 @@
+name: CaravanLayoutOptimizer
+version: "1.0.0"
+
+description: >
+  A real-world AI environment where an agent learns to arrange furniture and
+  fixtures inside a caravan (600 cm × 300 cm grid, 1 cell = 20 cm) to
+  maximise space efficiency, weight balance, zone coherence, walkway
+  accessibility, and priority-based usability.
+
+author: "Hackathon Submission"
+license: MIT
+
+server:
+  base_url: "http://localhost:7860"
+  health_check: "GET /"
+  expected_status: 200
+
+api:
+  reset:
+    method: POST
+    path: /reset
+    body_schema:
+      task_id:
+        type: string
+        enum: [task_easy, task_medium, task_hard]
+        default: task_easy
+
+  step:
+    method: POST
+    path: /step
+    body_schema:
+      item_id:
+        type: string
+        description: "ID of caravan item to place (e.g. 'bed_main')"
+      x:
+        type: integer
+        minimum: 0
+        description: "Grid column (0 = left wall)"
+      y:
+        type: integer
+        minimum: 0
+        description: "Grid row (0 = front of caravan)"
+      rotation:
+        type: integer
+        enum: [0, 90]
+        default: 0
+
+  state:
+    method: GET
+    path: /state
+
+# ---------------------------------------------------------------------
+# OBSERVATION SPACE
+# ---------------------------------------------------------------------
+
+observation_space:
+  type: object
+  fields:
+    task_id: string
+    grid_width: integer
+    grid_height: integer
+
+    placed_items:
+      type: array
+      item_schema:
+        item_id: string
+        x: integer
+        y: integer
+        rotation: integer
+        effective_width: integer
+        effective_height: integer
+
+    unplaced_items:
+      type: array
+      item_schema:
+        id: string
+        item_type: string
+        width: integer
+        height: integer
+        weight_kg: float
+        zone_preference: string
+
+    step_count: integer
+    done: boolean
+    score: float
+
+    metrics:
+      feasibility: float
+      weight_balance: float
+      space_utilisation: float
+      zone_coherence: float
+      aisle_score: float
+      accessibility: float
+      items_placed: float
+      items_remaining: float
+
+    grid_snapshot:
+      type: 2d-array
+
+# ---------------------------------------------------------------------
+# ACTION SPACE
+# ---------------------------------------------------------------------
+
+action_space:
+  type: object
+  fields:
+    item_id:
+      type: string
+    x:
+      type: integer
+      range: [0, 29]
+    y:
+      type: integer
+      range: [0, 14]
+    rotation:
+      type: integer
+      enum: [0, 90]
+
+# ---------------------------------------------------------------------
+# TASKS
+# ---------------------------------------------------------------------
+
+tasks:
+
+  - id: task_easy
+    name: "Basic Placement"
+    difficulty: easy
+    description: >
+      Place 3 essential items (bed, kitchen unit, storage) without overlaps.
+    items: [bed_main, kitchen_unit, storage_a]
+    max_steps: 20
+    score_range: [0.0, 1.0]
+    grader: env.graders.grade_easy
+    scoring: >
+      Feasibility-based scoring. Bonus if all items placed.
+
+  - id: task_medium
+    name: "Balanced Layout"
+    difficulty: medium
+    description: >
+      Place 5 items optimising for balance and space usage.
+    items: [bed_main, kitchen_unit, dining_table, bathroom, fridge]
+    max_steps: 30
+    score_range: [0.0, 1.0]
+    grader: env.graders.grade_medium
+    scoring: >
+      0.40 × feasibility + 0.30 × weight_balance + 0.30 × space_utilisation.
+
+  - id: task_hard
+    name: "Full Caravan Design"
+    difficulty: hard
+    description: >
+      Full layout optimisation including zoning, accessibility and aisle logic.
+    items: [bed_main, kitchen_unit, dining_table, storage_a, storage_b,
+            bathroom, sofa, wardrobe, fridge]
+    max_steps: 60
+    score_range: [0.0, 1.0]
+    grader: env.graders.grade_hard
+    scoring: >
+      0.22 × feasibility +
+      0.18 × weight_balance +
+      0.18 × space_utilisation +
+      0.16 × zone_coherence +
+      0.12 × aisle_score +
+      0.14 × accessibility
+# ---------------------------------------------------------------------
+# REWARD
+# ---------------------------------------------------------------------
+
+reward:
+  type: dense
+  description: >
+    Valid placement +0.05 (+0.02 zone bonus).
+    Invalid placement −0.05 to −0.10.
+    Final reward includes grader score.
+  range: [-0.1, 1.1]
+
+# ---------------------------------------------------------------------
+# INFERENCE
+# ---------------------------------------------------------------------
+
+inference:
+  script: inference.py
+  runtime_limit_minutes: 20
+  required_env_vars:
+    - API_BASE_URL
+    - MODEL_NAME
+    - HF_TOKEN
+  llm_client: openai

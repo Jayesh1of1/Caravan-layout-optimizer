@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "caravan-layout-optimizer"
 version = "1.0.0"
@@ -12,8 +16,12 @@ dependencies = [
     "requests",
     "openai",
     "httpx",
-    "pyyaml"
+    "pyyaml",
+    "openenv-core>=0.2.0"
 ]
 
+[project.scripts]
+server = "server.app:app"
+
 [tool.setuptools]
-packages = ["env"]
+packages = ["env", "server"]
